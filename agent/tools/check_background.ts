@@ -13,7 +13,10 @@ export default defineTool({
   inputSchema: z.object({
     taskId: z
       .string()
-      .min(1)
+      .regex(
+        /^bg-[0-9a-f]{8}$/,
+        'Task ids have the exact form "bg-" followed by 8 lowercase hex characters.',
+      )
       .describe('Task id returned by start_background, e.g. "bg-1a2b3c4d".'),
     tailLines: z
       .number()
@@ -31,6 +34,21 @@ export default defineTool({
     message: z.string(),
   }),
   async execute({ taskId, tailLines }, ctx) {
+    // taskId and tailLines are interpolated into a shell command below, so
+    // re-assert their shape here independently of the input schema: this is
+    // the injection boundary the shared command guard cannot see.
+    if (!/^bg-[0-9a-f]{8}$/.test(taskId) || !Number.isInteger(tailLines)) {
+      return {
+        taskId,
+        status: "not-found" as const,
+        exitCode: null,
+        logTail: "",
+        message:
+          'Invalid task id. Task ids have the exact form "bg-" followed by 8 lowercase hex ' +
+          "characters, as returned by start_background. Pass that value unchanged.",
+      };
+    }
+
     const sandbox = await ctx.getSandbox();
     const dir = `${TASKS_DIR}/${taskId}`;
 
