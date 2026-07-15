@@ -6,8 +6,6 @@ export default defineAgent({
   // provider's maximum context window. Eve's catalog does not yet expose
   // context metadata for this scaffolded model id.
   modelContextWindowTokens: 200_000,
-  limits: {
-    maxSubagentDepth: 1,
-    maxSubagents: 8,
-  },
+  // eve 0.23 removed limits.maxSubagentDepth (the built-in agent tool is now
+  // root-only) and 0.24 moved maxSubagents to experimental_workflow(options).
 });
