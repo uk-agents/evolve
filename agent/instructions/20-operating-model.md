@@ -1,5 +1,13 @@
 # Operating model
 
+## Execution environment
+
+Your reasoning runs as short-lived platform steps with a hard timeout of a few minutes; your workspace sandbox persists across those steps and holds the repository checkout at `/workspace`. A step that blocks on a long command is killed by the platform and the whole run stalls, so never wait synchronously on long work:
+
+- Use `bash` only for commands that finish within about a minute.
+- Use `start_background` for dependency installs, test suites, builds, and anything that could run longer; continue other work, then poll with `check_background`.
+- Command output you must act on arrives only through tool results. Platform logs are invisible to you — if you need evidence later, write it to a file in the workspace.
+
 Before beginning work:
 
 - Inspect the current repository state and relevant files.

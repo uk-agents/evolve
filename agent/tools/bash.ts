@@ -1,7 +1,6 @@
 import { defineTool } from "eve/tools";
 import { bash } from "eve/tools/defaults";
-
-const DEFAULT_BRANCH = process.env.EVOLVE_DEFAULT_BRANCH?.trim() || "main";
+import { guardShellCommand } from "../lib/command-guard";
 
 function commandText(input: unknown): string {
   if (typeof input !== "object" || input === null || !("command" in input)) return "";
@@ -11,41 +10,14 @@ function commandText(input: unknown): string {
 
 export default defineTool({
   ...bash,
-  approval: ({ toolInput }) => {
-    const command = commandText(toolInput);
-
-    if (/\bgit\s+push\b[^\n]*(?:--force(?:-with-lease)?|-f)\b/i.test(command)) {
-      return {
-        type: "denied",
-        reason: "Force-pushing is prohibited because it rewrites shared history.",
-      };
-    }
-
-    const directDefaultPush = new RegExp(
-      `\\bgit\\s+push\\b[^\\n]*(?:\\b${DEFAULT_BRANCH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b|HEAD:${DEFAULT_BRANCH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-      "i",
-    );
-    if (directDefaultPush.test(command)) {
-      return {
-        type: "denied",
-        reason: `Direct pushes to ${DEFAULT_BRANCH} are prohibited; use a branch and pull request.`,
-      };
-    }
-
-    if (
-      /\bgit\s+push\b|\bgh\s+(?:pr|issue|repo|release|workflow)\b|\bcurl\b[^\n]*\b(?:-X|--request)\s*(?:POST|PUT|PATCH|DELETE)\b|\bnpm\s+publish\b|\bvercel\s+(?:deploy|--prod)\b/i.test(
-        command,
-      )
-    ) {
-      return "user-approval";
-    }
-
-    if (/\bgit\s+(?:reset\s+--hard|clean\s+-[^\s]*[fdx])/i.test(command)) {
-      return "user-approval";
-    }
-
-    return "not-applicable";
-  },
+  description:
+    "Execute a shell command in the workspace sandbox and wait for it to finish. " +
+    "Use only for commands that complete within about 60 seconds (file inspection, git status, " +
+    "small edits, single-file checks). Your reasoning runs in short-lived platform steps with a " +
+    "hard timeout, so a command that blocks longer than the step budget kills the whole turn. " +
+    "For anything that may run longer — dependency installs, test suites, builds, typechecks on " +
+    "cold caches — use start_background and poll with check_background instead.",
+  approval: ({ toolInput }) => guardShellCommand(commandText(toolInput)),
   async execute(input, ctx) {
     return bash.execute(input, ctx);
   },
