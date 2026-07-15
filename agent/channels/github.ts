@@ -28,12 +28,20 @@ async function actorPermission(ctx: GitHubInboundContext): Promise<string> {
   }
 }
 
-function labelFromRaw(raw: unknown): string | null {
-  if (typeof raw !== "object" || raw === null || !("label" in raw)) return null;
-  const label = (raw as { label?: unknown }).label;
-  if (typeof label !== "object" || label === null || !("name" in label)) return null;
-  const name = (label as { name?: unknown }).name;
-  return typeof name === "string" ? name : null;
+// eve's issue.raw is the webhook payload's `issue` object only; the top-level
+// `label` key describing which label was applied is not passed through, so
+// dispatch is decided from the issue's current labels array instead.
+function issueHasLabel(raw: unknown, name: string): boolean {
+  if (typeof raw !== "object" || raw === null || !("labels" in raw)) return false;
+  const labels = (raw as { labels?: unknown }).labels;
+  if (!Array.isArray(labels)) return false;
+  return labels.some(
+    (label) =>
+      typeof label === "object" &&
+      label !== null &&
+      "name" in label &&
+      (label as { name?: unknown }).name === name,
+  );
 }
 
 export default githubChannel({
@@ -56,7 +64,7 @@ export default githubChannel({
 
   async onIssue(ctx, issue) {
     if (!matchesConfiguredRepository(ctx)) return null;
-    if (issue.action !== "labeled" || labelFromRaw(issue.raw) !== "agent:ready") {
+    if (issue.action !== "labeled" || !issueHasLabel(issue.raw, "agent:ready")) {
       return null;
     }
 
