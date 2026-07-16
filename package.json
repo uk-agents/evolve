@@ -10,6 +10,7 @@
     "build": "eve build",
     "dev": "eve dev",
     "start": "eve start",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "24.x",
+    "tsx": "4.23.1",
     "typescript": "7.0.2"
   },
   "overrides": {
