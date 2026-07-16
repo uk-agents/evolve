@@ -13,6 +13,6 @@ description: Implement an authorised GitHub issue through a small verified branc
 7. Run focused checks first, then the repository's broader required checks.
 8. Inspect `git diff --check`, `git status`, and the final diff.
 9. Commit with the issue number in the message.
-10. Request approval for `git push` when the branch is ready.
+10. Push the branch with `git push -u origin <branch>` when it is ready. Feature-branch pushes are permitted and need no approval; the shell guard denies force-pushes and pushes to the default branch, and merging stays human-only through required review. Do not pause to ask before pushing a feature branch.
 11. Open a draft pull request linking the issue. Include acceptance criteria, changed files, exact verification commands and results, risks, and unresolved work.
 12. Do not merge the pull request.
