@@ -18,28 +18,61 @@ export type CommandVerdict = { type: "denied"; reason: string } | "not-applicabl
  * Server-side controls remain the real enforcement: branch protection blocks
  * default-branch writes and required review gates every merge.
  */
+const ALLOWED_PUSH_FLAGS = new Set([
+  "-u",
+  "--set-upstream",
+  "-q",
+  "--quiet",
+  "-v",
+  "--verbose",
+  "--porcelain",
+]);
+
+const PLAIN_BRANCH = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+
+/**
+ * Pushes are allowlisted, not denylisted: git push has too many destructive
+ * spellings to enumerate (bare push uses the current branch's upstream, a
+ * leading `+` on a refspec forces, `--delete`/`-d` removes refs, colon
+ * refspecs retarget arbitrary remote branches). Only the explicit
+ * feature-branch update form `git push [-u] origin <branch>` is permitted.
+ */
+function guardPushSegment(segment: string): CommandVerdict {
+  const args = segment
+    .trim()
+    .split(/\s+/)
+    .slice(2)
+    .filter((t) => !/^\d*>&\d*$/.test(t) && !/^[12]?>>?\S*$/.test(t));
+
+  const positional = args.filter((a) => !ALLOWED_PUSH_FLAGS.has(a));
+  const ref = positional[1] ?? "";
+  if (
+    positional.length !== 2 ||
+    positional[0] !== "origin" ||
+    !PLAIN_BRANCH.test(ref) ||
+    ref.toUpperCase() === "HEAD" ||
+    ref.toLowerCase() === DEFAULT_BRANCH.toLowerCase()
+  ) {
+    return {
+      type: "denied",
+      reason:
+        `Only explicit feature-branch pushes are permitted: git push -u origin <branch>. ` +
+        `Bare pushes, force syntax (+ref, --force), deletions (--delete, :ref), mirror/all/tag ` +
+        `pushes, and any push targeting ${DEFAULT_BRANCH} are prohibited; open a pull request ` +
+        `for changes to ${DEFAULT_BRANCH}.`,
+    };
+  }
+  return "not-applicable";
+}
+
 export function guardShellCommand(command: string): CommandVerdict {
-  if (/\bgit\s+push\b[^\n]*(?:--force(?:-with-lease)?|-f)\b/i.test(command)) {
-    return {
-      type: "denied",
-      reason: "Force-pushing is prohibited because it rewrites shared history.",
-    };
+  const pushSegments =
+    command.match(/\bgit\s+(?:-[^\s]+\s+|-C\s+\S+\s+)*push\b[^&|;\n]*/gi) ?? [];
+  for (const segment of pushSegments) {
+    const normalized = segment.replace(/\bgit\s+(?:-[^\s]+\s+|-C\s+\S+\s+)*push\b/i, "git push");
+    const verdict = guardPushSegment(normalized);
+    if (verdict !== "not-applicable") return verdict;
   }
-
-  const directDefaultPush = new RegExp(
-    `\\bgit\\s+push\\b[^\\n]*(?:\\b${ESCAPED_BRANCH}\\b|HEAD:${ESCAPED_BRANCH})`,
-    "i",
-  );
-  if (directDefaultPush.test(command)) {
-    return {
-      type: "denied",
-      reason: `Direct pushes to ${DEFAULT_BRANCH} are prohibited; use a branch and pull request.`,
-    };
-  }
-
-  // Pushing a feature branch is the agent's core delivery mechanism and is
-  // governed server-side (branch protection, required review, no merge tool),
-  // so it is allowed without a gate.
 
   if (/\bgh\s+(?:pr|issue|repo|release|workflow)\b/i.test(command)) {
     return {
@@ -51,7 +84,7 @@ export function guardShellCommand(command: string): CommandVerdict {
     };
   }
 
-  if (/\bcurl\b[^\n]*\b(?:-X|--request)\s*(?:POST|PUT|PATCH|DELETE)\b/i.test(command)) {
+  if (/\bcurl\b[^\n]*(?:^|\s)(?:-X|--request)[\s=]*(?:POST|PUT|PATCH|DELETE)\b/i.test(command)) {
     return {
       type: "denied",
       reason:
