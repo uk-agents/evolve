@@ -244,7 +244,9 @@ export async function loadRepositorySnapshot(
   const [issues, pulls, workflows, protection, discussionData] = await Promise.all([
     githubRequest<IssueResponse[]>(
       token,
-      `${repoPath}/issues?state=open&sort=updated&direction=desc&per_page=8`,
+      // The REST issues feed mixes pull requests in; over-fetch so slicing to
+      // the snapshot bound AFTER the PR filter still yields real issues.
+      `${repoPath}/issues?state=open&sort=updated&direction=desc&per_page=30`,
     ),
     githubRequest<PullResponse[]>(
       token,
@@ -315,6 +317,7 @@ export async function loadRepositorySnapshot(
     },
     openIssues: issues
       .filter((issue) => issue.pull_request === undefined)
+      .slice(0, 8)
       .map((issue) => ({
         author: issue.user?.login ?? null,
         labels: labelNames(issue.labels),
