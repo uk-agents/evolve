@@ -32,6 +32,23 @@ async function actorPermission(ctx: GitHubInboundContext): Promise<string> {
   }
 }
 
+// The comment webhook payload eve surfaces does not carry the issue/PR state,
+// so a "skip closed threads" gate needs one REST lookup. Fails open: any error
+// allows dispatch, so a transient lookup failure never silently drops real work.
+async function conversationIsClosed(ctx: GitHubInboundContext): Promise<boolean> {
+  const number = ctx.conversation.pullRequestNumber ?? ctx.conversation.issueNumber;
+  if (number == null) return false;
+  try {
+    const response = await ctx.github.request<{ state?: string }>({
+      method: "GET",
+      path: `/repos/${encodeURIComponent(ctx.repository.owner)}/${encodeURIComponent(ctx.repository.name)}/issues/${number}`,
+    });
+    return response.body.state === "closed";
+  } catch {
+    return false;
+  }
+}
+
 // eve's issue.raw is the webhook payload's `issue` object only; the top-level
 // `label` key describing which label was applied is not passed through, so
 // dispatch is decided from the issue's current labels array instead.
@@ -49,8 +66,14 @@ export function issueHasLabel(raw: unknown, name: string): boolean {
   );
 }
 
-async function onComment(ctx: GitHubInboundContext, comment: GitHubComment) {
+// Exported for unit tests; not part of the channel's public behaviour.
+export async function onComment(ctx: GitHubInboundContext, comment: GitHubComment) {
   if (!matchesConfiguredRepository(ctx)) return null;
+  // Comments on a closed issue/PR are almost always housekeeping (e.g. a
+  // maintainer closing with a note). Dispatching there just spawns an idle
+  // session holding a sandbox. Skip them; open threads still dispatch, so the
+  // agent keeps its freedom to act on any live request.
+  if (await conversationIsClosed(ctx)) return null;
   const permission = await actorPermission(ctx);
   return {
     auth: defaultGitHubAuth(ctx),
