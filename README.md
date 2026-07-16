@@ -95,6 +95,14 @@ Before allowing autonomous work, configure GitHub itself:
 
 The `bash` wrapper denies force-pushes, direct pushes to the configured default branch, raw `gh` writes, mutating HTTP requests, publishing/deploying, and destructive Git resets — each with an actionable reason. Feature-branch pushes and the authored write tools are permitted, because branch protection and required review are the enforcement boundary. Denials are used instead of human-approval parks: on the GitHub channel an approval request is invisible and unanswerable, which turns a parked turn into a silent stall. This is a guardrail, not a replacement for branch protection or least-privilege GitHub App permissions.
 
+## Tasking the agent
+
+1. File an issue using the **Agent task** template (`.github/ISSUE_TEMPLATE/agent-task.yml`): problem, acceptance criteria, constraints, verification.
+2. Apply the `agent:ready` label. `onIssue` in `agent/channels/github.ts` only dispatches when the webhook action is `labeled`, the label is `agent:ready`, and the actor holds `write`, `maintain`, or `admin` permission on the repository — anyone else applying the label is ignored.
+3. The agent inspects the issue, works on a dedicated branch, and opens a pull request. It never merges its own pull requests; no merge tool is exposed to it.
+4. Comments on issues and pull-request review threads also reach the agent, through the channel's `onComment` handler. The channel tags each comment with the commenter's permission level; commenters without `write`/`maintain`/`admin` are treated as feedback rather than authorisation.
+5. A failed GitHub Actions check suite on an agent pull request triggers automatic triage: `onCheckSuite` dispatches only for a completed, failed `github-actions` check suite that is attached to a pull request, and instructs the agent to investigate logs before changing code.
+
 ## Run locally
 
 ```bash
