@@ -21,7 +21,12 @@ after(() => {
 // ---------------------------------------------------------------------------
 function assertDenied(command: string, expectedReason?: RegExp) {
   const result = guardShellCommand(command);
-  assert.notEqual(result, "not-applicable", `Expected "${command}" to be denied`);
+  // assert.fail returns `never`, which narrows the CommandVerdict union to the
+  // `{ type: "denied"; reason: string }` branch (node:assert has no narrowing
+  // assertion signature, so assert.notEqual alone would leave `.reason` untyped).
+  if (result === "not-applicable") {
+    assert.fail(`Expected "${command}" to be denied`);
+  }
   if (expectedReason) {
     assert.match(result.reason, expectedReason);
   }
