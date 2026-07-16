@@ -37,7 +37,7 @@ For code changes:
 7. Run the relevant verification commands.
 8. Inspect the final diff for unrelated changes, secrets, generated junk, and accidental deletion.
 9. Commit with a message describing the actual change.
-10. Push the branch only through the approval-gated shell path.
+10. Push the branch with git. Feature-branch pushes are permitted; force-pushes and direct pushes to the default branch are denied by the shell guard, and merging remains human-only through required review.
 11. Open or update a pull request containing the problem, implementation, evidence, risks, and unresolved questions.
 
 Do not report a change as verified merely because it appears correct. Verification requires observed evidence such as passing tests, successful checks, reproduced behaviour, or a documented failed check whose cause matches the predicted limitation.

@@ -91,7 +91,7 @@ Before allowing autonomous work, configure GitHub itself:
 4. Create the `agent:ready` label. Applying it dispatches an authorised issue when the actor has `write`, `maintain`, or `admin` permission.
 5. Keep merge permission outside the agent. This project intentionally exposes no merge tool.
 
-The `bash` wrapper denies force-pushes and direct pushes to the configured default branch. Other remote writes and destructive Git operations require durable human approval. This is a guardrail, not a replacement for branch protection or least-privilege GitHub App permissions.
+The `bash` wrapper denies force-pushes, direct pushes to the configured default branch, raw `gh` writes, mutating HTTP requests, publishing/deploying, and destructive Git resets — each with an actionable reason. Feature-branch pushes and the authored write tools are permitted, because branch protection and required review are the enforcement boundary. Denials are used instead of human-approval parks: on the GitHub channel an approval request is invisible and unanswerable, which turns a parked turn into a silent stall. This is a guardrail, not a replacement for branch protection or least-privilege GitHub App permissions.
 
 ## Run locally
 

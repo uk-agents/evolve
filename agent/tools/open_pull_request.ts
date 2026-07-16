@@ -1,5 +1,4 @@
 import { defineTool } from "eve/tools";
-import { once } from "eve/tools/approval";
 import { z } from "zod";
 import { githubAuth, requireConfiguredRepository } from "../lib/config";
 import { githubRequest } from "../lib/github";
@@ -27,7 +26,6 @@ export default defineTool({
     base: z.string().min(1).max(255).optional(),
     draft: z.boolean().default(true),
   }),
-  approval: once(),
   async execute({ title, body, head, base, draft }, ctx) {
     const repository = requireConfiguredRepository();
     const { token } = await ctx.getToken(githubAuth);
