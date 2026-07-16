@@ -4,7 +4,12 @@ import type {
   GitHubApiResponse,
   GitHubInboundContext,
 } from "eve/channels/github";
-import { issueHasLabel, matchesConfiguredRepository, onIssue } from "../../agent/channels/github";
+import {
+  issueHasLabel,
+  matchesConfiguredRepository,
+  onComment,
+  onIssue,
+} from "../../agent/channels/github";
 
 const ORIGINAL_EVOLVE_REPOSITORY = process.env.EVOLVE_REPOSITORY;
 
@@ -26,6 +31,7 @@ function createContext(
     readonly repositoryFullName?: string;
     readonly senderLogin?: string;
     readonly permission?: string | null;
+    readonly state?: string;
     readonly requestError?: Error;
   } = {},
 ): { readonly ctx: GitHubInboundContext; readonly requestCalls: number[] } {
@@ -46,7 +52,10 @@ function createContext(
         requestCalls.push(1);
         if (overrides.requestError) throw overrides.requestError;
         return {
-          body: { permission: overrides.permission ?? "none" } as T,
+          body: {
+            permission: overrides.permission ?? "none",
+            state: overrides.state ?? "open",
+          } as T,
           ok: true,
           status: 200,
         };
@@ -201,3 +210,43 @@ for (const permission of ["admin", "maintain", "write"]) {
     assert.match(result!.context![0], /#23/);
   });
 }
+
+// onComment closed-thread gate
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const STUB_COMMENT = { body: "hello", id: 1, raw: {} } as any;
+
+test("onComment dispatches on a comment in an open thread", async () => {
+  process.env.EVOLVE_REPOSITORY = "uk-agents/evolve";
+  const { ctx, requestCalls } = createContext({ permission: "admin", state: "open" });
+  const result = await onComment(ctx, STUB_COMMENT);
+  assert.notEqual(result, null);
+  assert.ok(result?.auth);
+  assert.equal(requestCalls.length, 2, "open thread should check state, then permission");
+});
+
+test("onComment suppresses a comment on a closed thread", async () => {
+  process.env.EVOLVE_REPOSITORY = "uk-agents/evolve";
+  const { ctx, requestCalls } = createContext({ permission: "admin", state: "closed" });
+  const result = await onComment(ctx, STUB_COMMENT);
+  assert.equal(result, null);
+  assert.equal(requestCalls.length, 1, "closed thread should short-circuit before the permission check");
+});
+
+test("onComment fails open (dispatches) when the state lookup errors", async () => {
+  process.env.EVOLVE_REPOSITORY = "uk-agents/evolve";
+  const { ctx } = createContext({ requestError: new Error("boom") });
+  const result = await onComment(ctx, STUB_COMMENT);
+  assert.notEqual(result, null, "a lookup failure must never silently drop a real comment");
+});
+
+test("onComment ignores a repository that does not match EVOLVE_REPOSITORY", async () => {
+  process.env.EVOLVE_REPOSITORY = "uk-agents/evolve";
+  const { ctx, requestCalls } = createContext({
+    permission: "admin",
+    repositoryFullName: "someone-else/other-repo",
+  });
+  const result = await onComment(ctx, STUB_COMMENT);
+  assert.equal(result, null);
+  assert.equal(requestCalls.length, 0, "no REST calls for an unconfigured repository");
+});
