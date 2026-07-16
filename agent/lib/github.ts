@@ -244,16 +244,18 @@ export async function loadRepositorySnapshot(
   const [issues, pulls, workflows, protection, discussionData] = await Promise.all([
     githubRequest<IssueResponse[]>(
       token,
-      `${repoPath}/issues?state=open&sort=updated&direction=desc&per_page=20`,
+      // The REST issues feed mixes pull requests in; over-fetch so slicing to
+      // the snapshot bound AFTER the PR filter still yields real issues.
+      `${repoPath}/issues?state=open&sort=updated&direction=desc&per_page=30`,
     ),
     githubRequest<PullResponse[]>(
       token,
-      `${repoPath}/pulls?state=open&sort=updated&direction=desc&per_page=20`,
+      `${repoPath}/pulls?state=open&sort=updated&direction=desc&per_page=8`,
     ),
     optional(() =>
       githubRequest<WorkflowRunsResponse>(
         token,
-        `${repoPath}/actions/runs?branch=${encodeURIComponent(metadata.default_branch)}&per_page=10`,
+        `${repoPath}/actions/runs?branch=${encodeURIComponent(metadata.default_branch)}&per_page=5`,
       ),
     ),
     optional(() =>
@@ -271,10 +273,10 @@ export async function loadRepositorySnapshot(
             token,
             `query RepositoryDiscussions($owner: String!, $name: String!) {
               repository(owner: $owner, name: $name) {
-                discussionCategories(first: 20) {
+                discussionCategories(first: 10) {
                   nodes { id name slug }
                 }
-                discussions(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
+                discussions(first: 10, orderBy: { field: UPDATED_AT, direction: DESC }) {
                   nodes {
                     number
                     title
@@ -315,6 +317,7 @@ export async function loadRepositorySnapshot(
     },
     openIssues: issues
       .filter((issue) => issue.pull_request === undefined)
+      .slice(0, 8)
       .map((issue) => ({
         author: issue.user?.login ?? null,
         labels: labelNames(issue.labels),
