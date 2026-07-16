@@ -1,5 +1,7 @@
 # Evolve
 
+[![CI](https://github.com/uk-agents/evolve/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/uk-agents/evolve/actions/workflows/ci.yml)
+
 Evolve is an [eve](https://github.com/vercel/eve) agent whose configured GitHub repository is its durable operating surface.
 
 - The default branch is accepted state.
