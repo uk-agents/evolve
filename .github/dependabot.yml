@@ -1,1 +1,19 @@
-version: 2&#10;&#10;groups:&#10;  npm-patch-minor:&#10;    patterns:&#10;      - package-ecosystem: &quot;npm&quot;&#10;        update-types:&#10;          - &quot;version-update:semver-patch&quot;&#10;          - &quot;version-update:semver-minor&quot;&#10;  actions:&#10;    patterns:&#10;      - package-ecosystem: &quot;github-actions&quot;&#10;&#10;updates:&#10;  - package-ecosystem: &quot;npm&quot;&#10;    directory: &quot;/&quot;&#10;    schedule:&#10;      interval: &quot;weekly&quot;&#10;    open-pull-requests-limit: 10&#10;  - package-ecosystem: &quot;github-actions&quot;&#10;    directory: &quot;/&quot;&#10;    schedule:&#10;      interval: &quot;weekly&quot;&#10;    open-pull-requests-limit: 10
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      npm-patch-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
