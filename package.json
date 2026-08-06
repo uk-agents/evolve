@@ -14,14 +14,14 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@vercel/connect": "0.3.3",
+    "@vercel/connect": "0.6.0",
     "ai": "^7.0.0",
-    "eve": "^0.24.4",
+    "eve": "^0.29.5",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "24.x",
-    "tsx": "4.23.1",
+    "tsx": "4.23.5",
     "typescript": "7.0.2"
   },
   "overrides": {
