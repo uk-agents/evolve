@@ -16,12 +16,12 @@
   "dependencies": {
     "@vercel/connect": "0.3.3",
     "ai": "^7.0.0",
-    "eve": "^0.24.4",
-    "zod": "4.4.3"
+    "eve": "^0.47.3",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "24.x",
-    "tsx": "4.23.1",
+    "tsx": "4.23.13",
     "typescript": "7.0.2"
   },
   "overrides": {
